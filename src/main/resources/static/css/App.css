@@ -1,0 +1,20 @@
+@import "tailwindcss";
+
+@theme {
+    --color-berry: #C841D7;
+    --color-mango: #E39A6D;
+    --color-stainedglass: #1D023766;
+}
+
+
+.glasscontainer {
+	@apply bg-stainedglass drop-shadow-md text-;
+	font-family: "Inria Sans", sans-serif;
+	color: white;
+	border-radius: 21px;
+	width: 325px;
+	height: 447px;
+	font-size: 20px;
+	padding: 14px;
+	text-align: center;
+}

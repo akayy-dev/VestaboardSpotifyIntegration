@@ -1,0 +1,13 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{base.html}">
+    <div layout:fragment="content" class="flex flex-col justify-center items-center h-screen gap-[46px]">
+        <div class="glasscontainer">
+            <strong>No one is playing anything!</strong>
+            <p>Hit the Takeover button to get started</p>
+        </div>
+        <div th:replace="~{fragments/button :: button('Takeover')}"></div>
+    </div>
+</body>
+</html>

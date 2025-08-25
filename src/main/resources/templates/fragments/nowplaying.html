@@ -1,0 +1,17 @@
+<div th:fragment="nowplaying(user, current, upNext)" id="nowplaying-container"
+    class="w-[325px] h-[447px] rounded-[21px] bg-stainedglass bg-opacity-40 drop-shadow-xl">
+    <div id="nowplaying-inner" class="flex flex-col items-center gap-[27px] mx-[15.5px] my-[26px] w-[294px] h-[395px]">
+        <img th:src="${current.albumArt}" class="w-[274px] h-[274px] rounded-[15px] ">
+        <span id="nowplayingtext" class="text-justify flex flex-col gap-[27px]">
+            <p class="text-center text-[20px]">
+                <strong th:text="${user}"></strong>
+                is playing <strong th:text="${current.title}"></strong>
+                by <strong th:text="${current.artist}"></strong>
+            </p>
+            <p class="upnext text-center text-[16px]">
+                Up Next: <strong th:text="${upNext.title}"></strong>
+            </p>
+        </span>
+
+    </div>
+</div>

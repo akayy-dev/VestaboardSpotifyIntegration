@@ -54,24 +54,6 @@ public class VestaboardController {
         spot.logout();
     }
 
-    // @PostMapping("/request_song")
-    // public Record requestSong(
-    // @RequestParam(value = "title") String title,
-    // @RequestParam(value = "artist") String artist) {
-    // try {
-    // Song requested = spot.addToQueue(title, artist);
-    // if (requested != null) {
-    // return new Response("success", requested);
-    // } else {
-    // return new Response(
-    // "failure",
-    // new Song("No song added", "No artist added"));
-    // }
-    // } catch (Exception e) {
-    // return new Response("failure", e.getMessage());
-    // }
-    // }
-
     /**
      * Endpoint to get the authentication status.
      *
@@ -93,8 +75,8 @@ public class VestaboardController {
         return spot.requestSong(title, artist);
     }
 
-    @Scheduled(fixedRate = 8000)
 
+    @Scheduled(fixedRate = 8000)
     public void update() {
         // This will run every 5 seconds to update the board.
         System.out.println("Checking for update...");
