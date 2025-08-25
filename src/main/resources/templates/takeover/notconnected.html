@@ -1,13 +1,21 @@
 <!DOCTYPE html>
-<html lang="en" xmlns:th="http://www.thymeleaf.org"
-      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
-      layout:decorate="~{base.html}">
-    <div layout:fragment="content" class="flex flex-col justify-center items-center h-screen gap-[46px]">
-        <div class="glasscontainer">
+<html lang="en" xmlns:th="http://www.thymeleaf.org" xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+    layout:decorate="~{base.html}">
+<div layout:fragment="content" class="flex flex-col justify-center items-center h-screen gap-[46px]">
+    <div class="glasscontainer h-[148px]  items-center">
+        <div class="my-[30px]">
             <strong>No one is playing anything!</strong>
-            <p>Hit the Takeover button to get started</p>
+            <p class="">Hit the Takeover button to get started</p>
+
         </div>
-        <div th:replace="~{fragments/button :: button('Takeover')}"></div>
     </div>
+
+
+    <!-- Link to spotify auth URL -->
+    <a th:href="${authURL}">
+        <button th:replace="~{fragments/button :: button('Takeover')}"></button>
+    </a>
+</div>
 </body>
+
 </html>

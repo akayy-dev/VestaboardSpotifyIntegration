@@ -173,11 +173,17 @@
   .my-\[26px\] {
     margin-block: 26px;
   }
+  .my-\[30px\] {
+    margin-block: 30px;
+  }
   .flex {
     display: flex;
   }
   .h-\[53px\] {
     height: 53px;
+  }
+  .h-\[148px\] {
+    height: 148px;
   }
   .h-\[274px\] {
     height: 274px;
@@ -280,7 +286,6 @@
     filter: var(--tw-blur,) var(--tw-brightness,) var(--tw-contrast,) var(--tw-grayscale,) var(--tw-hue-rotate,) var(--tw-invert,) var(--tw-saturate,) var(--tw-sepia,) var(--tw-drop-shadow,);
   }
 }
-@import url('https://fonts.googleapis.com/css2?family=Inria+Sans:ital,wght@0,300;0,400;0,700;1,300;1,400;1,700&display=swap');
 .glasscontainer {
   background-color: var(--color-stainedglass);
   color: var(--color-white);
@@ -291,9 +296,7 @@
   color: white;
   border-radius: 21px;
   width: 325px;
-  height: 447px;
   font-size: 20px;
-  padding: 14px;
   text-align: center;
 }
 @property --tw-gradient-position {
