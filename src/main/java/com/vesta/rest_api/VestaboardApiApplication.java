@@ -11,6 +11,8 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.web.servlet.config.annotation.CorsRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
+import com.vesta.rest_api.patterns.SpotifySession;
+
 @SpringBootApplication
 @EnableScheduling
 public class VestaboardApiApplication extends SpringBootServletInitializer {
@@ -24,20 +26,50 @@ public class VestaboardApiApplication extends SpringBootServletInitializer {
 		SpringApplication.run(VestaboardApiApplication.class, args);
 	}
 
+    @Bean
+    public CommandLineRunner commandLineRunner(ApplicationContext ctx) {
+        return args -> {
+            System.err.println("Starting API");
+            System.err.println("ENV: CLIENT_ID=" + System.getenv("CLIENT_ID") + " REDIRECT_URL=" + System.getenv("REDIRECT_URL"));
+            // beans
+            System.err.println("Has SpotifySession bean: " + ctx.containsBean("getSpotifySession"));
+            System.err.println("Has SpotifyIntegration bean: " + ctx.containsBean("getSpotifyIntegration"));
+            try {
+                SpotifySession ss = ctx.getBean(SpotifySession.class);
+                System.err.println("SpotifySession bean instance: " + ss);
+                try {
+                    System.err.println("SpotifySession.getAuthURL() => " + ss.getAuthURL());
+                } catch (Throwable t) {
+                    System.err.println("SpotifySession.getAuthURL() failed: " + t.getClass().getSimpleName() + " - " + t.getMessage());
+                }
+            } catch (Exception e) {
+                System.err.println("Could not get SpotifySession from context: " + e.getMessage());
+            }
+            try {
+                Object si = ctx.getBean(SpotifyIntegration.class);
+                System.err.println("SpotifyIntegration bean instance: " + si);
+            } catch (Exception e) {
+                System.err.println("Could not get SpotifyIntegration from context: " + e.getMessage());
+            }
+        };
+    }
+
 	@Bean
-	public CommandLineRunner commandLineRunner(ApplicationContext ctx) {
-		return args -> {
-			// System.err.println("Spring Boot provided beans:");
-			System.err.println("Starting API");
+	public SpotifySession getSpotifySession() {
+		String clientID = System.getenv("CLIENT_ID");
+		String clientSecret = System.getenv("CLIENT_SECRET");
+		String redirectURL = System.getenv("REDIRECT_URL");
+		return new SpotifySession(clientID, clientSecret, redirectURL);
+	}
 
-			// String[] beanNames = ctx.getBeanDefinitionNames();
-			// Arrays.sort(beanNames);
-
-			// for (String name : beanNames) {
-			// System.err.println(name);
-			// }
-			;
-		};
+	@Bean
+	public SpotifyIntegration getSpotifyIntegration(SpotifySession spotifySession) {
+		String vestaboardKey = System.getenv("VESTABOARD_KEY");
+		String clientID = System.getenv("CLIENT_ID");
+		String clientSecret = System.getenv("CLIENT_SECRET");
+		String redirectURL = System.getenv("REDIRECT_URL");
+		return new SpotifyIntegration(clientID, clientSecret, redirectURL, vestaboardKey);
+		// return new SpotifyIntegration(spotifySession, vestaboardKey);
 	}
 
 	// Enabling CORS

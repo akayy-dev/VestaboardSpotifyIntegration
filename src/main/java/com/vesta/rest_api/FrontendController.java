@@ -1,20 +1,22 @@
 package com.vesta.rest_api;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.LogManager;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 
-import com.vesta.rest_api.patterns.SpotifyUserSingleton;
+import com.vesta.rest_api.patterns.SpotifySession;
 
 @Controller
 public class FrontendController {
     private static final Logger LOG = LogManager.getLogger(FrontendController.class);
+    @Autowired
+    SpotifySession spotify;
 
     @GetMapping("/")
     public String indexPage(Model model) {
-        SpotifyUserSingleton spotify = SpotifyUserSingleton.getInstance();
         
         if (!spotify.isAuthenticated()) {
             LOG.info("Routing to not connected page.");

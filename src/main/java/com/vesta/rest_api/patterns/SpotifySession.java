@@ -7,6 +7,7 @@ import java.util.Scanner;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.springframework.beans.factory.annotation.Autowired;
 
 import com.vesta.rest_api.Song;
 
@@ -27,16 +28,15 @@ import se.michaelthelin.spotify.model_objects.specification.Paging;
 import se.michaelthelin.spotify.model_objects.specification.Track;
 import se.michaelthelin.spotify.model_objects.specification.User;
 
-public class SpotifyUserSingleton {
-	private static SpotifyUserSingleton instance;
+public class SpotifySession {
 	private SpotifyApi spot;
 	private boolean isAuthenticated;
-	private static final Logger LOG = LogManager.getLogger(SpotifyUserSingleton.class);
+	private static final Logger LOG = LogManager.getLogger(SpotifySession.class);
 
 	/**
 	 * Singleton for interacting with spotify API.
 	 */
-	private SpotifyUserSingleton(String clientID, String clientSecret, String redirectURI) {
+	public SpotifySession(String clientID, String clientSecret, String redirectURI) {
 		// Initialize Logger
 
 		try {
@@ -50,34 +50,6 @@ public class SpotifyUserSingleton {
 		}
 
 		isAuthenticated = false;
-	}
-
-	/**
-	 * Retrieves the singleton instance of SpotifyUserSingleton.
-	 *
-	 * @param clientID     The Spotify client ID.
-	 * @param clientSecret The Spotify client secret.
-	 * @param redirectURI  The redirect URI after authentication.
-	 * @return The singleton instance of SpotifyUserSingleton.
-	 */
-	public static SpotifyUserSingleton getInstance(
-			String clientID,
-			String clientSecret,
-			String redirectURI) {
-		if (instance == null) {
-			instance = new SpotifyUserSingleton(clientID, clientSecret, redirectURI);
-			LOG.debug("SpotifyUserSingleton created.");
-		}
-		return instance;
-	}
-
-	public static SpotifyUserSingleton getInstance() {
-		if (instance != null) {
-			return instance;
-		} else {
-			return null;
-		}
-
 	}
 
 	/**
@@ -131,7 +103,6 @@ public class SpotifyUserSingleton {
 		if (playbackState == null) {
 			return false;
 		}
-
 		return playbackState.getIs_playing();
 	}
 
@@ -319,29 +290,4 @@ public class SpotifyUserSingleton {
 		this.isAuthenticated = false;
 	}
 
-	public static void main(String[] args) {
-		// Simple test to make sure everything works.
-		String clientID = System.getenv("CLIENT_ID");
-		String clientSecret = System.getenv("CLIENT_SECRET");
-		String redirectURL = System.getenv("REDIRECT_URL");
-		Scanner scan = new Scanner(System.in);
-		SpotifyUserSingleton singleton = SpotifyUserSingleton.getInstance(clientID, clientSecret, redirectURL);
-
-		System.out.print("Enter auth code:");
-		String authCode = scan.nextLine();
-		scan.close();
-		try {
-			singleton.useAuthToken(authCode);
-			System.out.println(singleton.getConnectedUser());
-			Song currentSong = singleton.getCurrentSong();
-			System.out.println(currentSong.getTitle() + " - " + currentSong.getArtist());
-			System.out.println("Next Up: " + singleton.getNextUp().getTitle());
-			System.out.println("Queue:");
-			for (Song song : singleton.getQueue()) {
-				System.out.println(song.getTitle() + " - " + song.getArtist());
-			}
-		} catch (Throwable t) {
-			t.printStackTrace();
-		}
-	}
 }

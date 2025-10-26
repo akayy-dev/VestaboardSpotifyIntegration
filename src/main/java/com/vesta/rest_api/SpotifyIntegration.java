@@ -2,14 +2,16 @@ package com.vesta.rest_api;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.springframework.beans.factory.annotation.Autowired;
 
 import com.vesta.rest_api.events.ObservableEvents;
 import com.vesta.rest_api.patterns.SongChangeObserver;
-import com.vesta.rest_api.patterns.SpotifyUserSingleton;
+import com.vesta.rest_api.patterns.SpotifySession;
 import com.vesta.rest_api.patterns.Subject;
 
 import se.michaelthelin.spotify.exceptions.SpotifyWebApiException;
 import se.michaelthelin.spotify.exceptions.detailed.TooManyRequestsException;
+import org.springframework.context.annotation.Bean;
 
 /**
  * Respoonsible for facillitating the connection of the
@@ -19,7 +21,7 @@ import se.michaelthelin.spotify.exceptions.detailed.TooManyRequestsException;
  * it's a {@link Subject} to send an update event to the
  * {@link SongChangeObserver }.
  */
-public class SpotifyIntegration implements Subject {
+public class SpotifyIntegration implements Subject{
 
     /**
      * Whether or not a user is connected stored in the cache.
@@ -36,11 +38,27 @@ public class SpotifyIntegration implements Subject {
      */
     private String connectedUserCached;
 
-    private SpotifyUserSingleton spot;
+    @Autowired
+    private SpotifySession spot;
 
     private static final Logger LOG = LogManager.getLogger(SpotifyIntegration.class);
 
     private SpotifyState board;
+
+    public SpotifyIntegration(SpotifySession spotifySession, String vestaboardKey) {
+        this.spot = spotifySession;
+        LOG.debug("SpotifyIntegration created.");
+
+        isConnectedCached = false;
+        isPlayingCached = false;
+
+        board = new SpotifyState();
+
+        SongChangeObserver onSongChange = new SongChangeObserver(vestaboardKey);
+        attach(onSongChange);
+
+        LOG.debug("SpotifyUserSingleton has been created.");
+}
 
     public SpotifyIntegration(String clientID, String clientSecret, String redirectURI, String vestaboardKey) {
         LOG.debug("SpotifyIntegration created.");
@@ -53,7 +71,6 @@ public class SpotifyIntegration implements Subject {
         SongChangeObserver onSongChange = new SongChangeObserver(vestaboardKey);
         attach(onSongChange);
 
-        spot = SpotifyUserSingleton.getInstance(clientID, clientSecret, redirectURI);
         LOG.debug("SpotifyUserSingleton has been created.");
     }
 
@@ -106,6 +123,10 @@ public class SpotifyIntegration implements Subject {
                     + e.getMessage());
         }
         return null;
+    }
+
+    public String getConnectedUserCached() {
+        return connectedUserCached;
     }
 
     public Boolean getAuthStatus() {
