@@ -19,11 +19,9 @@ import se.michaelthelin.spotify.exceptions.detailed.TooManyRequestsException;
 import se.michaelthelin.spotify.model_objects.IPlaylistItem;
 import se.michaelthelin.spotify.model_objects.credentials.AuthorizationCodeCredentials;
 import se.michaelthelin.spotify.model_objects.miscellaneous.CurrentlyPlaying;
-import se.michaelthelin.spotify.model_objects.miscellaneous.CurrentlyPlayingContext;
 import se.michaelthelin.spotify.model_objects.special.PlaybackQueue;
 import se.michaelthelin.spotify.requests.authorization.authorization_code.AuthorizationCodeUriRequest;
 import se.michaelthelin.spotify.requests.data.player.GetUsersCurrentlyPlayingTrackRequest;
-import se.michaelthelin.spotify.model_objects.specification.Paging;
 import se.michaelthelin.spotify.model_objects.specification.Track;
 import se.michaelthelin.spotify.model_objects.specification.User;
 
@@ -61,13 +59,18 @@ public class SpotifyIntegration implements Subject{
 
     private SpotifyState board;
 
-    public SpotifyIntegration(String clientID, String clientSecret, String redirectURI, String vestaboardKey) {
+    private final StateBroadcastService broadcaster;
+
+    public SpotifyIntegration(String clientID, String clientSecret, String redirectURI, String vestaboardKey, StateBroadcastService stateBroadcastService) {
         LOG.debug("SpotifyIntegration created.");
 
         // initialize internal state
         isConnectedCached = false;
         isPlayingCached = false;
         isAuthenticated = false;
+
+        // Set broadcaster
+        this.broadcaster = stateBroadcastService;
 
         // build Spotify API client
         try {
@@ -124,6 +127,7 @@ public class SpotifyIntegration implements Subject{
             // update cache after authentication
             updateCache();
             LOG.info("Auth token submitted, logged in as " + connectedUserCached);
+            broadcaster.broadCastState("login", board);
         } catch (Exception e) {
             LOG.info("Error submitting auth token, ERROR_MSG: " + e.getMessage());
         }
@@ -142,7 +146,7 @@ public class SpotifyIntegration implements Subject{
         isAuthenticated = false;
         isConnectedCached = false;
 
-        notifyObservers(ObservableEvents.LOGOUT);
+        broadcaster.broadCastState("logout", board);
     }
 
     public String getConnectedUser() {
@@ -391,6 +395,9 @@ public class SpotifyIntegration implements Subject{
                      */
                     board.setCurrentSong(currentSong);
                     board.setNextSong(upNext);
+                    
+                    // Broadcast to emitters
+                    broadcaster.broadCastState("song_change", board);
                 }
                 // also update if the queue is updated. will come useful when requests are
                 // implemented.
@@ -401,6 +408,9 @@ public class SpotifyIntegration implements Subject{
                     // see above
                     board.setCurrentSong(currentSong);
                     board.setNextSong(upNext);
+                    
+                    // Broadcast to emitters
+                    broadcaster.broadCastState("queue_change", board);
                 }
             }
         } catch (Exception e) {

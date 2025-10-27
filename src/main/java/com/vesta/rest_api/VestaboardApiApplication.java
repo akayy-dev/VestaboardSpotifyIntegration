@@ -26,11 +26,12 @@ public class VestaboardApiApplication extends SpringBootServletInitializer {
 		SpringApplication.run(VestaboardApiApplication.class, args);
 	}
 
-    @Bean
-    public CommandLineRunner commandLineRunner(ApplicationContext ctx) {
-        return args -> {
-            System.err.println("Starting API");
-            System.err.println("ENV: CLIENT_ID=" + System.getenv("CLIENT_ID") + " REDIRECT_URL=" + System.getenv("REDIRECT_URL"));
+	@Bean
+	public CommandLineRunner commandLineRunner(ApplicationContext ctx) {
+		return args -> {
+			System.err.println("Starting API");
+			System.err.println(
+					"ENV: CLIENT_ID=" + System.getenv("CLIENT_ID") + " REDIRECT_URL=" + System.getenv("REDIRECT_URL"));
 			// beans
 			System.err.println("Has SpotifyIntegration bean: " + ctx.containsBean("getSpotifyIntegration"));
 			try {
@@ -39,16 +40,17 @@ public class VestaboardApiApplication extends SpringBootServletInitializer {
 			} catch (Exception e) {
 				System.err.println("Could not get SpotifyIntegration from context: " + e.getMessage());
 			}
-        };
-    }
+		};
+	}
+
 
 	@Bean
-	public SpotifyIntegration getSpotifyIntegration() {
+	public SpotifyIntegration getSpotifyIntegration(StateBroadcastService stateBroadcastService) {
 		String vestaboardKey = System.getenv("VESTABOARD_KEY");
 		String clientID = System.getenv("CLIENT_ID");
 		String clientSecret = System.getenv("CLIENT_SECRET");
 		String redirectURL = System.getenv("REDIRECT_URL");
-		return new SpotifyIntegration(clientID, clientSecret, redirectURL, vestaboardKey);
+		return new SpotifyIntegration(clientID, clientSecret, redirectURL, vestaboardKey, stateBroadcastService);
 	}
 
 	// Enabling CORS

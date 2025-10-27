@@ -7,7 +7,6 @@ import org.apache.logging.log4j.LogManager;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 
-import com.vesta.rest_api.SpotifyIntegration;
 
 @Controller
 public class FrontendController {
