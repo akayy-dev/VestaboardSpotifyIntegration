@@ -7,13 +7,13 @@ import org.apache.logging.log4j.LogManager;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 
-import com.vesta.rest_api.patterns.SpotifySession;
+import com.vesta.rest_api.SpotifyIntegration;
 
 @Controller
 public class FrontendController {
     private static final Logger LOG = LogManager.getLogger(FrontendController.class);
     @Autowired
-    SpotifySession spotify;
+    SpotifyIntegration spotify;
 
     @GetMapping("/")
     public String indexPage(Model model) {
