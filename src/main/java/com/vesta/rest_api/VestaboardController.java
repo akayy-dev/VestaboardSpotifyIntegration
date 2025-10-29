@@ -1,8 +1,5 @@
 package com.vesta.rest_api;
 
-import java.io.IOException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -24,6 +21,8 @@ public class VestaboardController {
     private final StateBroadcastService broadcaster;
 
     private static final Logger LOG = LogManager.getLogger(VestaboardController.class);
+
+    private SpotifyState state;
 
     // For spring to do dependency injection
     public VestaboardController(SpotifyIntegration spot, StateBroadcastService broadcaster) {
@@ -82,8 +81,6 @@ public class VestaboardController {
             @RequestParam(value = "artist") String artist) {
         return spot.requestSong(title, artist);
     }
-
-    private final ExecutorService executor = Executors.newCachedThreadPool();
 
     /**
      * This endpoint emits messages from the server when a song is changed.

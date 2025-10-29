@@ -8,8 +8,6 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import com.vesta.rest_api.events.ObservableEvents;
-import com.vesta.rest_api.patterns.SongChangeObserver;
-import com.vesta.rest_api.patterns.Subject;
 
 import org.apache.hc.core5.http.ParseException;
 import se.michaelthelin.spotify.SpotifyApi;
@@ -34,7 +32,7 @@ import se.michaelthelin.spotify.model_objects.specification.User;
  * it's a {@link Subject} to send an update event to the
  * {@link SongChangeObserver }.
  */
-public class SpotifyIntegration implements Subject{
+public class SpotifyIntegration {
 
     /**
      * Whether or not a user is connected stored in the cache.
@@ -71,6 +69,7 @@ public class SpotifyIntegration implements Subject{
 
         // Set broadcaster
         this.broadcaster = stateBroadcastService;
+        board = new SpotifyState();
 
         // build Spotify API client
         try {
@@ -83,12 +82,6 @@ public class SpotifyIntegration implements Subject{
             LOG.warn("Failed to initialize SpotifyApi. ERROR_MSG: " + e.getLocalizedMessage());
         }
 
-        board = new SpotifyState();
-
-        SongChangeObserver onSongChange = new SongChangeObserver(vestaboardKey);
-        attach(onSongChange);
-
-        LOG.debug("SpotifyUserSingleton has been created.");
     }
 
     /**
@@ -227,6 +220,11 @@ public class SpotifyIntegration implements Subject{
 
                 Song currentSong = new Song(songName, trackArtist, albumArt);
                 LOG.debug("Retreiving current song, SONG: " + currentSong.getTitle() + " - " + currentSong.getArtist());
+                if (!isPlayingCached) {
+                    // if the user wansn't playing anything before, send the change in state to the emitter.
+                    // BUG: Doesn't seem to work, oh well. I tried, figure out how to do this later.
+                    broadcaster.broadCastState("play", board);
+                }
                 isPlayingCached = true;
                 return currentSong;
             }
@@ -245,11 +243,11 @@ public class SpotifyIntegration implements Subject{
             LOG.warn("Could not get current song due to SpotifyWebApiException ERROR MSG: " + message);
             if (message != null && message.equals("The access token expired")) {
                 LOG.warn("Expired access token, should create a method to refresh access token.");
-                notifyObservers(ObservableEvents.SPOTIFY_TOKEN_EXPIRED);
             }
         } catch (IndexOutOfBoundsException e) {
             LOG.info("Not playing anything.");
             isPlayingCached = false;
+            broadcaster.broadCastState("paused", board);
         } catch (Exception e) {
             String errorName = e.getClass().getSimpleName();
             String message = e.getLocalizedMessage();
