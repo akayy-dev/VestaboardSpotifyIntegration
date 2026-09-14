@@ -1,9 +1,8 @@
-package com.vesta.rest_api;
+package com.vesta.rest_api.routes;
 
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -12,19 +11,17 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import org.springframework.web.servlet.view.RedirectView;
 
+import com.vesta.rest_api.spotify.Song;
+import com.vesta.rest_api.spotify.SpotifyIntegration;
+
 @RestController
 public class VestaboardController {
 
-    @Autowired
-    private SpotifyIntegration spot;
-
     private final StateBroadcastService broadcaster;
+    private final SpotifyIntegration spot;
 
     private static final Logger LOG = LogManager.getLogger(VestaboardController.class);
 
-    private SpotifyState state;
-
-    // For spring to do dependency injection
     public VestaboardController(SpotifyIntegration spot, StateBroadcastService broadcaster) {
         this.spot = spot;
         this.broadcaster = broadcaster;
@@ -97,7 +94,7 @@ public class VestaboardController {
     public void update() {
         // This will run every 5 seconds to update the board.
         if (spot.isConnected()) {
-            System.out.println("Checking for update...");
+            LOG.debug("Checking for Spotify state update");
             spot.run();
         }
     }

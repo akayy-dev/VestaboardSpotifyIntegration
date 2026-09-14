@@ -1,4 +1,4 @@
-package com.vesta.rest_api;
+package com.vesta.rest_api.vestaboard;
 
 import com.google.gson.Gson;
 import java.util.HashMap;

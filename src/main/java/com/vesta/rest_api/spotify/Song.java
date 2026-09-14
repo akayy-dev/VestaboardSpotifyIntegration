@@ -1,4 +1,4 @@
-package com.vesta.rest_api;
+package com.vesta.rest_api.spotify;
 
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;

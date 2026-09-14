@@ -1,12 +1,14 @@
-package com.vesta.rest_api;
+package com.vesta.rest_api.spotify;
 
 // Logging
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.springframework.stereotype.Service;
 
 import java.util.Timer;
 import java.util.TimerTask;
+
+import com.vesta.rest_api.vestaboard.Component;
+import com.vesta.rest_api.vestaboard.Vestaboard;
 
 /**
  * Represents the state of the connected Spotify User

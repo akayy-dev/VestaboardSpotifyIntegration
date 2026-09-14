@@ -1,4 +1,4 @@
-package com.vesta.rest_api;
+package com.vesta.rest_api.routes;
 
 public class NotAuthenticated extends Exception {
 	public NotAuthenticated(String message) {

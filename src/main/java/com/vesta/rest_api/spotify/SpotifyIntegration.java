@@ -1,4 +1,4 @@
-package com.vesta.rest_api;
+package com.vesta.rest_api.spotify;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -20,6 +20,8 @@ import se.michaelthelin.spotify.requests.authorization.authorization_code.Author
 import se.michaelthelin.spotify.requests.data.player.GetUsersCurrentlyPlayingTrackRequest;
 import se.michaelthelin.spotify.model_objects.specification.Track;
 import se.michaelthelin.spotify.model_objects.specification.User;
+
+import com.vesta.rest_api.routes.StateBroadcastService;
 
 
 /**

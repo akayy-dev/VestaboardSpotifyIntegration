@@ -1,3 +1,3 @@
-package com.vesta.rest_api;
+package com.vesta.rest_api.vestaboard;
 
 public record VestaboardState(String state) { }

@@ -1,4 +1,4 @@
-package com.vesta.rest_api;
+package com.vesta.rest_api.vestaboard;
 
 import java.util.HashMap;
 

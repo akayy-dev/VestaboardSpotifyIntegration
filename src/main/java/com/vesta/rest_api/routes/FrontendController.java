@@ -1,4 +1,4 @@
-package com.vesta.rest_api;
+package com.vesta.rest_api.routes;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
@@ -7,13 +7,14 @@ import org.apache.logging.log4j.LogManager;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 
+import com.vesta.rest_api.spotify.Song;
+import com.vesta.rest_api.spotify.SpotifyIntegration;
+
 @Controller
 public class FrontendController {
     private static final Logger LOG = LogManager.getLogger(FrontendController.class);
     @Autowired
     SpotifyIntegration spotify;
-
-    private SpotifyState state;
 
     @GetMapping("/")
     public String indexPage(Model model) {

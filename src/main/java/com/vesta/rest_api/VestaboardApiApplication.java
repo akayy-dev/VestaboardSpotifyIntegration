@@ -11,7 +11,8 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.web.servlet.config.annotation.CorsRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
-import com.vesta.rest_api.SpotifyIntegration;
+import com.vesta.rest_api.routes.StateBroadcastService;
+import com.vesta.rest_api.spotify.SpotifyIntegration;
 
 @SpringBootApplication
 @EnableScheduling
