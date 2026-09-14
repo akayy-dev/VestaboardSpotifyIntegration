@@ -7,8 +7,6 @@ import java.util.List;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import com.vesta.rest_api.events.ObservableEvents;
-
 import org.apache.hc.core5.http.ParseException;
 import se.michaelthelin.spotify.SpotifyApi;
 import se.michaelthelin.spotify.SpotifyHttpManager;
