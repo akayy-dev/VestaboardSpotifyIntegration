@@ -31,7 +31,7 @@ public class VestaboardController {
     public RedirectView sendToken(@RequestParam(value = "code") String token, RedirectAttributes attributes) {
         // BUG: Despite returning true, when using accounts other than mine
         // I can't utilize the API, will work on this later.
-        LOG.debug("Logging in with token " + token);
+        LOG.debug("Processing auth token (token redacted for security)");
         spot.useAuthToken(token);
         attributes.addFlashAttribute("flashAttribute", "redirectWithRedirectView");
         attributes.addAttribute("attribute", "redirectWithRedirectView");
@@ -44,8 +44,13 @@ public class VestaboardController {
     @GetMapping("/current")
     public StateResponse getCurrentState() {
         Song[] songs = spot.getSongState();
-        Song currentSong = songs[0];
-        Song upNext = songs[1];
+        Song currentSong = null;
+        Song upNext = null;
+        
+        if (songs != null && songs.length >= 2) {
+            currentSong = songs[0];
+            upNext = songs[1];
+        }
 
         StateResponse stateResponse = new StateResponse(spot.isConnected(), spot.getConnectedUserCached(),
                 spot.isPlaying(),
@@ -92,7 +97,7 @@ public class VestaboardController {
 
     @Scheduled(fixedRate = 8000)
     public void update() {
-        // This will run every 5 seconds to update the board.
+        // This will run every 8 seconds to update the board.
         if (spot.isConnected()) {
             LOG.debug("Checking for Spotify state update");
             spot.run();

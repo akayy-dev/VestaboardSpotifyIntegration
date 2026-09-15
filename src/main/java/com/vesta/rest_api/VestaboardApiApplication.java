@@ -1,5 +1,8 @@
 package com.vesta.rest_api;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
@@ -18,6 +21,11 @@ import com.vesta.rest_api.spotify.SpotifyIntegration;
 @EnableScheduling
 public class VestaboardApiApplication extends SpringBootServletInitializer {
 
+	private static final Logger LOG = LogManager.getLogger(VestaboardApiApplication.class);
+
+	@Value("${cors.allowed-origins:http://localhost:3000}")
+	private String corsAllowedOrigins;
+
 	@Override
 	protected SpringApplicationBuilder configure(SpringApplicationBuilder application) {
 		return application.sources(VestaboardApiApplication.class);
@@ -30,20 +38,19 @@ public class VestaboardApiApplication extends SpringBootServletInitializer {
 	@Bean
 	public CommandLineRunner commandLineRunner(ApplicationContext ctx) {
 		return args -> {
-			System.err.println("Starting API");
-			System.err.println(
-					"ENV: CLIENT_ID=" + System.getenv("CLIENT_ID") + " REDIRECT_URL=" + System.getenv("REDIRECT_URL"));
-			// beans
-			System.err.println("Has SpotifyIntegration bean: " + ctx.containsBean("getSpotifyIntegration"));
+			LOG.info("Starting VestaboardSpotify API");
+			LOG.debug("ENV: CLIENT_ID is set: {}, REDIRECT_URL is set: {}", 
+					System.getenv("CLIENT_ID") != null,
+					System.getenv("REDIRECT_URL") != null);
+			LOG.debug("Has SpotifyIntegration bean: {}", ctx.containsBean("getSpotifyIntegration"));
 			try {
 				Object si = ctx.getBean(SpotifyIntegration.class);
-				System.err.println("SpotifyIntegration bean instance: " + si);
+				LOG.debug("SpotifyIntegration bean instance: {}", si);
 			} catch (Exception e) {
-				System.err.println("Could not get SpotifyIntegration from context: " + e.getMessage());
+				LOG.error("Could not get SpotifyIntegration from context: {}", e.getMessage());
 			}
 		};
 	}
-
 
 	@Bean
 	public SpotifyIntegration getSpotifyIntegration(StateBroadcastService stateBroadcastService) {
@@ -51,21 +58,37 @@ public class VestaboardApiApplication extends SpringBootServletInitializer {
 		String clientID = System.getenv("CLIENT_ID");
 		String clientSecret = System.getenv("CLIENT_SECRET");
 		String redirectURL = System.getenv("REDIRECT_URL");
+		
+		// Validate required environment variables
+		validateEnvVar("VESTABOARD_KEY", vestaboardKey);
+		validateEnvVar("CLIENT_ID", clientID);
+		validateEnvVar("CLIENT_SECRET", clientSecret);
+		validateEnvVar("REDIRECT_URL", redirectURL);
+		
 		return new SpotifyIntegration(clientID, clientSecret, redirectURL, vestaboardKey, stateBroadcastService);
 	}
 
-	// Enabling CORS
+	private void validateEnvVar(String name, String value) {
+		if (value == null || value.isBlank()) {
+			LOG.error("Required environment variable {} is not set!", name);
+			throw new IllegalStateException("Required environment variable " + name + " is not set. " +
+					"Please set it in your .env file or environment.");
+		}
+	}
+
+	// Enabling CORS - configured via cors.allowed-origins property
 	@Bean
 	public WebMvcConfigurer corsConfiguration() {
 		return new WebMvcConfigurer() {
 			@Override
 			public void addCorsMappings(CorsRegistry registry) {
-				registry.addMapping("/request_song").allowedOrigins("http://localhost:3000");
-				registry.addMapping("/current").allowedOrigins("http://localhost:3000");
-				registry.addMapping("/get_auth_url").allowedOrigins("http://localhost:3000");
-				registry.addMapping("/send_auth_token").allowedOrigins("http://localhost:3000");
-				registry.addMapping("/auth_status").allowedOrigins("http://localhost:3000");
-				registry.addMapping("/*").allowedOrigins("http://localhost:3000");
+				String[] origins = corsAllowedOrigins.split(",");
+				LOG.info("Configuring CORS with allowed origins: {}", corsAllowedOrigins);
+				registry.addMapping("/**")
+						.allowedOrigins(origins)
+						.allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
+						.allowedHeaders("*")
+						.allowCredentials(true);
 			}
 		};
 	}

@@ -8,10 +8,14 @@ import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
 import org.apache.http.util.EntityUtils;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import com.google.gson.Gson;
 
 public class Component {
+	private static final Logger LOG = LogManager.getLogger(Component.class);
+
 	private String justify;
 	private String align;
 	private String body;
@@ -118,14 +122,14 @@ public class Component {
 			try {
 				HttpResponse response = client.execute(request);
 				String responseString = EntityUtils.toString(response.getEntity());
-				System.out.println(responseString);
+				LOG.debug("VBML compose response: {}", responseString);
 				return responseString;
 			} catch (Exception e) {
-				e.printStackTrace();
+				LOG.error("Failed to compile components: {}", e.getMessage());
 				return null;
 			}
 		} catch (Exception e) {
-			e.printStackTrace();
+			LOG.error("Error creating HTTP client for VBML: {}", e.getMessage());
 			return null;
 		}
 	}
@@ -148,19 +152,16 @@ public class Component {
 			final StringEntity requestBody = new StringEntity(bodyString);
 			request.setEntity(requestBody);
 
-			// Who decided needing to nest a try catch inside another try catch was a good
-			// idea.
 			try {
 				HttpResponse response = client.execute(request);
 				String result = EntityUtils.toString(response.getEntity());
 				return result;
 			} catch (Exception e) {
-				e.printStackTrace();
-				;
+				LOG.error("Failed to get VBML: {}", e.getMessage());
 				return null;
 			}
 		} catch (Exception e) {
-			e.printStackTrace();
+			LOG.error("Error creating HTTP client for VBML: {}", e.getMessage());
 			return null;
 		}
 	}

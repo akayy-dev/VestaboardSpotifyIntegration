@@ -46,14 +46,13 @@ public class Vestaboard {
             HttpResponse response = client.execute(request);
             String result = EntityUtils.toString(response.getEntity());
 
-            Gson gson = new Gson();
             Map<String, Map<String, String>> json = gson.fromJson(
                     result,
                     Map.class);
             String state = json.get("currentMessage").get("layout");
             return state;
         } catch (Exception e) {
-            e.printStackTrace();
+            LOG.error("Failed to get Vestaboard state: {}", e.getMessage());
             return null;
         }
     }
@@ -74,7 +73,7 @@ public class Vestaboard {
             final String messageBody = String.format(
                     "{\"text\": \"%s\"}",
                     message);
-            System.err.println(messageBody);
+            LOG.debug("Sending message to Vestaboard");
             final StringEntity body = new StringEntity(messageBody);
             request.setEntity(body);
 
@@ -83,13 +82,11 @@ public class Vestaboard {
                 String result = EntityUtils.toString(response.getEntity());
                 return result;
             } catch (Exception e) {
-                e.printStackTrace();
-                System.err.println(
-                        "This might be because you are trying to submit text that is already on the board.");
+                LOG.warn("Failed to send message to Vestaboard: {}. This might be because you are trying to submit text that is already on the board.", e.getMessage());
                 return null;
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            LOG.error("Error creating HTTP client for Vestaboard: {}", e.getMessage());
             return null;
         }
     }
@@ -108,13 +105,11 @@ public class Vestaboard {
                 HashMap<String, String> responseMap = gson.fromJson(result, HashMap.class);
                 return responseMap;
             } catch (Exception e) {
-                e.printStackTrace();
-                System.err.println(
-                        "This might be because you are trying to submit text that is already on the board.");
+                LOG.warn("Failed to send raw data to Vestaboard: {}. This might be because you are trying to submit text that is already on the board.", e.getMessage());
                 return null;
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            LOG.error("Error creating HTTP client for Vestaboard: {}", e.getMessage());
             return null;
         }
     }

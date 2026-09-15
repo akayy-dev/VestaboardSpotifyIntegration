@@ -33,13 +33,10 @@ public class FrontendController {
             upNext = spotify.getNextUp();
             userName = spotify.getConnectedUser();
         } catch (Exception e) {
-            LOG.warn(e.getMessage());
+            LOG.warn("Error fetching Spotify data: {}", e.getMessage());
             return "error";
         }
 
-        current = spotify.getCurrentSong();
-        upNext = spotify.getNextUp();
-        userName = spotify.getConnectedUser();
         model.addAttribute("user", userName);
         model.addAttribute("current", current);
         model.addAttribute("upNext", upNext);

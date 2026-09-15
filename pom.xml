@@ -13,7 +13,7 @@
 	<artifactId>rest-api</artifactId>
 	<version>2.0 DEPLOY</version>
 	<name>VestaboardAPI</name>
-	<description>API for connecting spotify and vestabpard</description>
+	<description>API for connecting Spotify and Vestaboard</description>
 	<url/>
 	<licenses>
 		<license/>

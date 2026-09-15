@@ -3,6 +3,8 @@ package com.vesta.rest_api.spotify;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -35,23 +37,31 @@ import com.vesta.rest_api.routes.StateBroadcastService;
 public class SpotifyIntegration {
 
     /**
-     * Whether or not a user is connected stored in the cache.
+     * Maximum number of retries for rate-limited requests.
      */
-    private Boolean isConnectedCached;
+    private static final int MAX_RETRIES = 3;
 
     /**
-     * Cache boolean representing whether or not the user is playing anything
+     * Whether or not a user is connected stored in the cache.
+     * Thread-safe using AtomicBoolean.
      */
-    private Boolean isPlayingCached;
+    private final AtomicBoolean isConnectedCached = new AtomicBoolean(false);
+
+    /**
+     * Cache boolean representing whether or not the user is playing anything.
+     * Thread-safe using AtomicBoolean.
+     */
+    private final AtomicBoolean isPlayingCached = new AtomicBoolean(false);
 
     /**
      * Cache string representing the connected user.
+     * Thread-safe using AtomicReference.
      */
-    private String connectedUserCached;
+    private final AtomicReference<String> connectedUserCached = new AtomicReference<>(null);
 
     // Spotify API client and auth state (merged from previous SpotifySession)
     private SpotifyApi spot;
-    private boolean isAuthenticated;
+    private final AtomicBoolean isAuthenticated = new AtomicBoolean(false);
 
     private static final Logger LOG = LogManager.getLogger(SpotifyIntegration.class);
 
@@ -61,11 +71,6 @@ public class SpotifyIntegration {
 
     public SpotifyIntegration(String clientID, String clientSecret, String redirectURI, String vestaboardKey, StateBroadcastService stateBroadcastService) {
         LOG.debug("SpotifyIntegration created.");
-
-        // initialize internal state
-        isConnectedCached = false;
-        isPlayingCached = false;
-        isAuthenticated = false;
 
         // Set broadcaster
         this.broadcaster = stateBroadcastService;
@@ -116,16 +121,16 @@ public class SpotifyIntegration {
                     .execute();
             spot.setAccessToken(creds.getAccessToken());
             spot.setRefreshToken(creds.getRefreshToken());
-            isAuthenticated = true;
+            isAuthenticated.set(true);
             // update cache after authentication
             updateCache();
-            LOG.info("Auth token submitted, logged in as " + connectedUserCached);
+            LOG.info("Auth token submitted, logged in as " + connectedUserCached.get());
             broadcaster.broadCastState("login", board);
         } catch (Exception e) {
             LOG.info("Error submitting auth token, ERROR_MSG: " + e.getMessage());
         }
-        isConnectedCached = isAuthenticated;
-        return isConnectedCached;
+        isConnectedCached.set(isAuthenticated.get());
+        return isConnectedCached.get();
     }
 
     /** Disconnects the users account from the application. */
@@ -136,10 +141,47 @@ public class SpotifyIntegration {
             spot.setAccessToken(null);
             spot.setRefreshToken(null);
         }
-        isAuthenticated = false;
-        isConnectedCached = false;
+        isAuthenticated.set(false);
+        isConnectedCached.set(false);
+        isPlayingCached.set(false);
+        connectedUserCached.set(null);
 
         broadcaster.broadCastState("logout", board);
+    }
+
+    /**
+     * Refreshes the Spotify access token using the refresh token.
+     * Should be called when the access token expires.
+     * 
+     * @return true if refresh was successful, false otherwise
+     */
+    public boolean refreshAccessToken() {
+        try {
+            if (spot.getRefreshToken() == null) {
+                LOG.warn("Cannot refresh token: no refresh token available");
+                return false;
+            }
+            
+            AuthorizationCodeCredentials creds = spot
+                    .authorizationCodeRefresh()
+                    .build()
+                    .execute();
+            
+            spot.setAccessToken(creds.getAccessToken());
+            // Spotify may return a new refresh token
+            if (creds.getRefreshToken() != null) {
+                spot.setRefreshToken(creds.getRefreshToken());
+            }
+            
+            LOG.info("Successfully refreshed access token");
+            return true;
+        } catch (Exception e) {
+            LOG.error("Failed to refresh access token: " + e.getMessage());
+            // Token refresh failed, user needs to re-authenticate
+            isAuthenticated.set(false);
+            isConnectedCached.set(false);
+            return false;
+        }
     }
 
     public String getConnectedUser() {
@@ -156,11 +198,11 @@ public class SpotifyIntegration {
     }
 
     public String getConnectedUserCached() {
-        return connectedUserCached;
+        return connectedUserCached.get();
     }
 
     public Boolean getAuthStatus() {
-        return isConnectedCached;
+        return isConnectedCached.get();
     }
 
     /**
@@ -184,7 +226,7 @@ public class SpotifyIntegration {
      * @return A boolean variable representing whether or not the user is connected.
      */
     public Boolean isConnected() {
-        return isConnectedCached;
+        return isConnectedCached.get();
     }
 
     /**
@@ -192,66 +234,87 @@ public class SpotifyIntegration {
      *         playing a song.
      */
     public Boolean isPlaying() {
-        return isPlayingCached;
+        return isPlayingCached.get();
     }
 
     /**
      * Retrieves the currently playing song from the Spotify service.
+     * Uses iterative retry with backoff for rate limiting.
      * 
      * @return the currently playing {@link Song} if available, or {@code null} if
      *         an error occurs or no song is playing.
-     * @throws RuntimeException if there is an issue with the Spotify service or
-     *                          user authentication.
-     */
-    /**
-     * Retrieve currently playing track and convert to Song.
      */
     public Song getCurrentSong() {
-        try {
-            final GetUsersCurrentlyPlayingTrackRequest currentlyPlayingRequest = spot.getUsersCurrentlyPlayingTrack()
-                    .build();
-            final CurrentlyPlaying currentlyPlaying = currentlyPlayingRequest.execute();
-            if (currentlyPlaying != null && currentlyPlaying.getItem() != null) {
-                String songName = currentlyPlaying.getItem().getName();
-                String songID = currentlyPlaying.getItem().getId();
-
-                String trackArtist = getSongArtistFromID(songID);
-                String albumArt = getAlbumArtFromSongID(songID);
-
-                Song currentSong = new Song(songName, trackArtist, albumArt);
-                LOG.debug("Retreiving current song, SONG: " + currentSong.getTitle() + " - " + currentSong.getArtist());
-                if (!isPlayingCached) {
-                    // if the user wansn't playing anything before, send the change in state to the emitter.
-                    // BUG: Doesn't seem to work, oh well. I tried, figure out how to do this later.
-                    broadcaster.broadCastState("play", board);
-                }
-                isPlayingCached = true;
-                return currentSong;
-            }
-        } catch (TooManyRequestsException e) {
-            Integer retryAfter = e.getRetryAfter();
-            LOG.warn("getCurrentSong() raised TooManyRequests exceptions, backing off for " + retryAfter + " seconds.");
+        int retryCount = 0;
+        
+        while (retryCount < MAX_RETRIES) {
             try {
-                Thread.sleep(retryAfter * 1000);
-                LOG.info("Backoff finished, retrying.");
-                return getCurrentSong();
-            } catch (InterruptedException i) {
-                LOG.warn("Backoff attempt interrupted, ERROR_MSG: " + i.getMessage());
+                final GetUsersCurrentlyPlayingTrackRequest currentlyPlayingRequest = spot.getUsersCurrentlyPlayingTrack()
+                        .build();
+                final CurrentlyPlaying currentlyPlaying = currentlyPlayingRequest.execute();
+                if (currentlyPlaying != null && currentlyPlaying.getItem() != null) {
+                    String songName = currentlyPlaying.getItem().getName();
+                    String songID = currentlyPlaying.getItem().getId();
+
+                    String trackArtist = getSongArtistFromID(songID);
+                    String albumArt = getAlbumArtFromSongID(songID);
+
+                    Song currentSong = new Song(songName, trackArtist, albumArt);
+                    LOG.debug("Retrieving current song, SONG: " + currentSong.getTitle() + " - " + currentSong.getArtist());
+                    if (!isPlayingCached.get()) {
+                        // if the user wasn't playing anything before, send the change in state to the emitter.
+                        broadcaster.broadCastState("play", board);
+                    }
+                    isPlayingCached.set(true);
+                    return currentSong;
+                } else {
+                    // No song currently playing
+                    if (isPlayingCached.get()) {
+                        isPlayingCached.set(false);
+                        broadcaster.broadCastState("paused", board);
+                    }
+                    return null;
+                }
+            } catch (TooManyRequestsException e) {
+                retryCount++;
+                Integer retryAfter = e.getRetryAfter();
+                LOG.warn("getCurrentSong() raised TooManyRequests exception, backing off for " + retryAfter + " seconds. Retry " + retryCount + "/" + MAX_RETRIES);
+                if (retryCount >= MAX_RETRIES) {
+                    LOG.error("Max retries exceeded for getCurrentSong()");
+                    return null;
+                }
+                try {
+                    Thread.sleep(retryAfter * 1000L);
+                    LOG.info("Backoff finished, retrying.");
+                } catch (InterruptedException i) {
+                    LOG.warn("Backoff attempt interrupted, ERROR_MSG: " + i.getMessage());
+                    Thread.currentThread().interrupt();
+                    return null;
+                }
+            } catch (SpotifyWebApiException s) {
+                String message = s.getLocalizedMessage();
+                LOG.warn("Could not get current song due to SpotifyWebApiException ERROR MSG: " + message);
+                if (message != null && message.contains("access token expired")) {
+                    LOG.info("Access token expired, attempting refresh...");
+                    if (refreshAccessToken()) {
+                        retryCount++;
+                        continue; // Retry with new token
+                    }
+                }
+                return null;
+            } catch (IndexOutOfBoundsException e) {
+                LOG.info("Not playing anything.");
+                if (isPlayingCached.get()) {
+                    isPlayingCached.set(false);
+                    broadcaster.broadCastState("paused", board);
+                }
+                return null;
+            } catch (Exception e) {
+                String errorName = e.getClass().getSimpleName();
+                String message = e.getLocalizedMessage();
+                LOG.warn("Could not get current song due to " + errorName + " ERROR MSG: " + message);
+                return null;
             }
-        } catch (SpotifyWebApiException s) {
-            String message = s.getLocalizedMessage();
-            LOG.warn("Could not get current song due to SpotifyWebApiException ERROR MSG: " + message);
-            if (message != null && message.equals("The access token expired")) {
-                LOG.warn("Expired access token, should create a method to refresh access token.");
-            }
-        } catch (IndexOutOfBoundsException e) {
-            LOG.info("Not playing anything.");
-            isPlayingCached = false;
-            broadcaster.broadCastState("paused", board);
-        } catch (Exception e) {
-            String errorName = e.getClass().getSimpleName();
-            String message = e.getLocalizedMessage();
-            LOG.warn("Could not get current song due to " + errorName + " ERROR MSG: " + message);
         }
         return null;
     }
@@ -263,7 +326,7 @@ public class SpotifyIntegration {
      * @throws Throwable if there is an issue retrieving the next song.
      */
     public Song getNextUp() {
-        if (isPlayingCached) {
+        if (isPlayingCached.get()) {
             try {
                 final PlaybackQueue queue = spot.getTheUsersQueue().build().execute();
                 final IPlaylistItem nextUp = queue.getQueue().get(0);
@@ -310,7 +373,7 @@ public class SpotifyIntegration {
     }
 
     public Song requestSong(String trackName, String artistName) {
-        String query = "\"track\":" + trackName + "\"artist:\"" + artistName;
+        String query = "track:" + trackName + " artist:" + artistName;
         return addToQueue(query);
     }
 
@@ -354,7 +417,7 @@ public class SpotifyIntegration {
     }
 
     public boolean isAuthenticated() {
-        return isAuthenticated;
+        return isAuthenticated.get();
     }
 
     /**
@@ -364,47 +427,56 @@ public class SpotifyIntegration {
     public void run() {
         try {
             // Won't run if spotify isn't authenticated, that way I won't get any errors.
-            if (isConnectedCached) {
+            if (isConnectedCached.get()) {
                 Song currentSong = getCurrentSong();
                 Song upNext = getNextUp();
-                isPlayingCached = isPlaying();
 
                 // if cached songs are empty, that likely means user just logged in.
-                if (board.getCurrentSong() == null && board.getNextSong() == null) {
+                Song cachedCurrent = board.getCurrentSong();
+                Song cachedNext = board.getNextSong();
+                
+                if (cachedCurrent == null || cachedCurrent.getTitle().isEmpty()) {
                     LOG.trace("Cached songs are empty, updating currentSongCached and upNextCached");
-                    board.setCurrentSong(currentSong);
-                    board.setNextSong(upNext);
+                    if (currentSong != null) {
+                        board.setCurrentSong(currentSong);
+                    }
+                    if (upNext != null) {
+                        board.setNextSong(upNext);
+                    }
+                    // Broadcast initial state
+                    if (currentSong != null) {
+                        broadcaster.broadCastState("song_change", board);
+                    }
+                    return;
                 }
 
-                /*
-                 * BUG: Apparently this if statement doesn't run on the first update when a user
-                 * connects,
-                 * meaning that the board will only start working after the first song/queue
-                 * change,
-                 * figure this out later.
-                 */
-                if (currentSong != null && !currentSong.equals(board.getCurrentSong())) {
-                    LOG.info("Now playing changed from " + board.getCurrentSong().getTitle() + " to "
-                            + currentSong.getTitle());
+                // Check if song changed
+                if (currentSong != null && !currentSong.equals(cachedCurrent)) {
+                    String previousTitle = cachedCurrent != null ? cachedCurrent.getTitle() : "nothing";
+                    LOG.info("Now playing changed from " + previousTitle + " to " + currentSong.getTitle());
 
                     /*
                      * update the cache to match the current song before
                      * notifying the observer
                      */
                     board.setCurrentSong(currentSong);
-                    board.setNextSong(upNext);
+                    if (upNext != null) {
+                        board.setNextSong(upNext);
+                    }
                     
                     // Broadcast to emitters
                     broadcaster.broadCastState("song_change", board);
                 }
                 // also update if the queue is updated. will come useful when requests are
                 // implemented.
-                else if (upNext != null && !upNext.equals(board.getNextSong())) {
-
-                    LOG.info("Up next changed from " + board.getNextSong().getTitle() + " to " + upNext.getTitle());
+                else if (upNext != null && !upNext.equals(cachedNext)) {
+                    String previousTitle = cachedNext != null ? cachedNext.getTitle() : "nothing";
+                    LOG.info("Up next changed from " + previousTitle + " to " + upNext.getTitle());
 
                     // see above
-                    board.setCurrentSong(currentSong);
+                    if (currentSong != null) {
+                        board.setCurrentSong(currentSong);
+                    }
                     board.setNextSong(upNext);
                     
                     // Broadcast to emitters
@@ -412,7 +484,7 @@ public class SpotifyIntegration {
                 }
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            LOG.error("Error in run(): " + e.getMessage(), e);
         }
     }
 
@@ -422,13 +494,19 @@ public class SpotifyIntegration {
      */
     public void updateCache() {
         try {
-                isPlayingCached = isPlaying();
-
-            if (isPlayingCached) {
-                isConnectedCached = isAuthenticated();
-                board.setCurrentSong(getCurrentSong());
-                connectedUserCached = getConnectedUser();
-                board.setNextSong(getNextUp());
+            isConnectedCached.set(isAuthenticated.get());
+            connectedUserCached.set(getConnectedUser());
+            
+            Song currentSong = getCurrentSong();
+            if (currentSong != null) {
+                board.setCurrentSong(currentSong);
+                isPlayingCached.set(true);
+                Song nextSong = getNextUp();
+                if (nextSong != null) {
+                    board.setNextSong(nextSong);
+                }
+            } else {
+                isPlayingCached.set(false);
             }
         } catch (Exception e) {
             LOG.warn("Error updating cache, ERROR MSG: " + e.getMessage());

@@ -4,6 +4,7 @@ package com.vesta.rest_api.spotify;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import java.util.Objects;
 import java.util.Timer;
 import java.util.TimerTask;
 
@@ -58,7 +59,7 @@ public class SpotifyState extends Vestaboard {
 	 *
 	 * Used primarily in schedulePush()
 	 */
-	private final Timer timer = new Timer();
+	private final Timer timer = new Timer("SpotifyState-Timer", true); // daemon thread
 
 	public SpotifyState() {
 		super(System.getenv("VESTABOARD_KEY"));
@@ -68,6 +69,12 @@ public class SpotifyState extends Vestaboard {
 		// set the song states to empty songs by default.
 		currentSong = new Song("", "", "");
 		nextSong = new Song("", "", "");
+		
+		// Register shutdown hook to cancel the timer
+		Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+			LOG.info("Shutting down SpotifyState timer");
+			timer.cancel();
+		}));
 	}
 
 	/**
@@ -85,13 +92,15 @@ public class SpotifyState extends Vestaboard {
 	 * @param nextSong the Song object representing the next song
 	 */
 	public void setNextSong(Song nextSong) {
-		if (this.nextSong != nextSong) {
-
+		if (nextSong == null) {
+			LOG.debug("Attempted to set next song to null, ignoring");
+			return;
+		}
+		if (!Objects.equals(this.nextSong, nextSong)) {
 			LOG.info("Updating next song in state to " + nextSong.getTitle());
 			this.nextSong = nextSong;
 			schedulePush();
 		}
-
 	}
 
 	/**
@@ -125,13 +134,16 @@ public class SpotifyState extends Vestaboard {
 	}
 
 	public void setCurrentSong(Song currentSong) {
-		if (this.currentSong != currentSong) {
-
+		if (currentSong == null) {
+			LOG.debug("Attempted to set current song to null, ignoring");
+			return;
+		}
+		if (!Objects.equals(this.currentSong, currentSong)) {
 			LOG.info("Updating current song in state to " + currentSong.getTitle());
 			this.currentSong = currentSong;
 			schedulePush();
 		}
-	};
+	}
 
 	/**
 	 * Checks if the Spotify player is currently playing.
